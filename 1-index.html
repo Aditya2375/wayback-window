@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Wayback Window - the web, on any day</title>
+<style>
+  :root {
+    --desk-a: #0e1726;
+    --desk-b: #1b2a4a;
+    --chrome-bg: #c0c0c0;
+    --chrome-text: #000;
+    --title-a: #000080;
+    --title-b: #1084d0;
+    --title-text: #fff;
+    --bevel-light: #ffffff;
+    --bevel-dark: #0a0a0a;
+    --bevel-mid: #808080;
+    --field-bg: #ffffff;
+    --accent: #000080;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: Tahoma, Verdana, "Segoe UI", "MS Sans Serif", sans-serif;
+    background:
+      radial-gradient(1200px 700px at 20% -10%, rgba(70,110,200,.25), transparent 60%),
+      radial-gradient(1000px 600px at 90% 110%, rgba(20,180,160,.12), transparent 60%),
+      linear-gradient(160deg, var(--desk-a), var(--desk-b));
+    color: #e8ecf4;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 14px 18px;
+  }
+  .stage-head {
+    text-align: center;
+    margin-bottom: 18px;
+    user-select: none;
+  }
+  .stage-head h1 {
+    font-size: 15px;
+    letter-spacing: .35em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: #9fb3d9;
+  }
+  .stage-head p {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #64748f;
+    letter-spacing: .04em;
+  }
+
+  /* ---------- window ---------- */
+  .window {
+    width: min(1180px, 100%);
+    height: min(78vh, 860px);
+    min-height: 520px;
+    display: flex;
+    flex-direction: column;
+    background: var(--chrome-bg);
+    color: var(--chrome-text);
+    border: 1px solid;
+    border-color: var(--bevel-light) var(--bevel-dark) var(--bevel-dark) var(--bevel-light);
+    box-shadow: inset -1px -1px 0 var(--bevel-mid), inset 1px 1px 0 #dfdfdf,
+                0 30px 80px rgba(0,0,0,.55), 0 4px 18px rgba(0,0,0,.4);
+  }
+  .titlebar {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 3px 4px 3px 6px;
+    background: linear-gradient(90deg, var(--title-a), var(--title-b));
+    color: var(--title-text);
+    font-size: 12px;
+    font-weight: 700;
+    min-height: 26px;
+  }
+  .titlebar .tb-icon {
+    width: 16px; height: 16px;
+    flex: 0 0 16px;
+    display: grid; place-items: center;
+    background: #c0c0c0;
+    border: 1px solid;
+    border-color: #fff #000 #000 #fff;
+    font-size: 10px;
+    color: #000080;
+  }
+  .titlebar .tb-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    text-shadow: 0 1px 1px rgba(0,0,0,.4);
+  }
+  .tb-btn {
+    width: 18px; height: 16px;
+    flex: 0 0 18px;
+    background: #c0c0c0;
+    border: 1px solid;
+    border-color: #fff #000 #000 #fff;
+    box-shadow: inset 1px 1px 0 #dfdfdf, inset -1px -1px 0 #808080;
+    color: #000;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .tb-btn:active {
+    border-color: #000 #fff #fff #000;
+    box-shadow: inset -1px -1px 0 #dfdfdf, inset 1px 1px 0 #808080;
+  }
+
+  /* ---------- toolbar ---------- */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 6px;
+    border-bottom: 1px solid #808080;
+    flex-wrap: wrap;
+  }
+  .nav-btn {
+    height: 26px;
+    min-width: 30px;
+    padding: 0 8px;
+    background: var(--chrome-bg);
+    border: 1px solid transparent;
+    font-family: inherit;
+    font-size: 11px;
+    color: var(--chrome-text);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .nav-btn:hover:not(:disabled) {
+    border-color: var(--bevel-light) var(--bevel-mid) var(--bevel-mid) var(--bevel-light);
+    box-shadow: inset -1px -1px 0 #fff, inset 1px 1px 0 #808080;
+  }
+  .nav-btn:active:not(:disabled) {
+    border-color: var(--bevel-mid) var(--bevel-light) var(--bevel-light) var(--bevel-mid);
+  }
+  .nav-btn:disabled { opacity: .45; cursor: default; }
+  .toolbar .sep {
+    width: 1px; height: 22px;
+    background: #808080;
+    border-right: 1px solid #fff;
+    margin: 0 4px;
+  }
+  .capture-nav { margin-left: auto; display: flex; gap: 2px; align-items: center; }
+  .capture-nav .hint { font-size: 10px; color: #404040; margin-right: 6px; }
+
+  /* ---------- address row ---------- */
+  .addressrow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 6px;
+    border-bottom: 1px solid #808080;
+    font-size: 11px;
+    flex-wrap: wrap;
+  }
+  .addressrow label { color: #202020; }
+  .inset-field {
+    background: var(--field-bg);
+    border: 1px solid;
+    border-color: var(--bevel-mid) var(--bevel-light) var(--bevel-light) var(--bevel-mid);
+    box-shadow: inset 1px 1px 0 #0a0a0a22, inset -1px -1px 0 #fff;
+    height: 24px;
+    padding: 0 6px;
+    font-family: "Courier New", monospace;
+    font-size: 12px;
+    color: #000;
+  }
+  #urlInput { flex: 1 1 260px; min-width: 140px; }
+  #dateInput { width: 150px; flex: 0 0 150px; }
+  .go-btn {
+    height: 24px;
+    padding: 0 14px;
+    background: var(--chrome-bg);
+    border: 1px solid;
+    border-color: var(--bevel-light) var(--bevel-dark) var(--bevel-dark) var(--bevel-light);
+    box-shadow: inset 1px 1px 0 #dfdfdf, inset -1px -1px 0 var(--bevel-mid);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .go-btn:active {
+    border-color: var(--bevel-dark) var(--bevel-light) var(--bevel-light) var(--bevel-dark);
+    box-shadow: inset -1px -1px 0 #dfdfdf, inset 1px 1px 0 var(--bevel-mid);
+  }
+  select.inset-field { font-family: inherit; padding: 0 2px; }
+  #skinSelect { width: 132px; flex: 0 0 132px; }
+
+  /* ---------- viewport ---------- */
+  .viewport-wrap {
+    position: relative;
+    flex: 1;
+    margin: 6px;
+    border: 1px solid;
+    border-color: var(--bevel-mid) var(--bevel-light) var(--bevel-light) var(--bevel-mid);
+    box-shadow: inset 1px 1px 0 #0a0a0a44;
+    background: #fff;
+    overflow: hidden;
+  }
+  #frame {
+    width: 100%; height: 100%;
+    border: 0;
+    display: none;
+    background: #fff;
+  }
+  .crt::after {
+    content: "";
+    position: absolute; inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px,
+      rgba(0,0,0,.07) 3px
+    );
+    mix-blend-mode: multiply;
+  }
+  .crt::before {
+    content: "";
+    position: absolute; inset: 0;
+    pointer-events: none;
+    z-index: 3;
+    background: radial-gradient(120% 120% at 50% 50%, transparent 62%, rgba(0,0,0,.28) 100%);
+  }
+  /* ---------- home page ---------- */
+  .home {
+    position: absolute; inset: 0;
+    overflow: auto;
+    background: #f4f1e8;
+    color: #222;
+    padding: 34px 30px;
+    font-family: Georgia, "Times New Roman", serif;
+  }
+  .home-inner { max-width: 640px; margin: 0 auto; }
+  .home h2 {
+    font-size: 30px;
+    font-weight: 400;
+    letter-spacing: .01em;
+    color: #1a2a52;
+  }
+  .home h2 .b { color: #c0341d; }
+  .home .tagline {
+    margin-top: 6px;
+    font-size: 14px;
+    color: #5a5347;
+    font-style: italic;
+  }
+  .home .panel {
+    margin-top: 22px;
+    background: #fffdf6;
+    border: 1px solid #d8d2c0;
+    padding: 18px 18px 14px;
+    box-shadow: 2px 2px 0 #d8d2c0;
+  }
+  .home label.fld {
+    display: block;
+    font-family: Tahoma, Verdana, sans-serif;
+    font-size: 11px;
+    color: #6b6455;
+    margin: 10px 0 4px;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+  }
+  .home input.big {
+    width: 100%;
+    height: 34px;
+    font-size: 15px;
+    padding: 0 10px;
+    border: 1px solid #b8b09a;
+    font-family: "Courier New", monospace;
+    background: #fff;
+  }
+  .home input.big:focus { outline: 2px solid #1a2a52; }
+  .home .interpreted {
+    font-family: Tahoma, sans-serif;
+    font-size: 11px;
+    color: #777033;
+    margin-top: 4px;
+    min-height: 14px;
+  }
+  .home .chips {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-top: 10px;
+  }
+  .chip {
+    font-family: Tahoma, sans-serif;
+    font-size: 11px;
+    padding: 3px 10px;
+    background: #efe9d8;
+    border: 1px solid #c9c0a6;
+    cursor: pointer;
+  }
+  .chip:hover { background: #1a2a52; color: #fff; border-color: #1a2a52; }
+  .home .travel {
+    margin-top: 16px;
+    width: 100%;
+    height: 40px;
+    font-size: 15px;
+    font-family: Tahoma, sans-serif;
+    font-weight: 700;
+    letter-spacing: .06em;
+    background: #1a2a52;
+    color: #fff;
+    border: 0;
+    cursor: pointer;
+  }
+  .home .travel:hover { background: #c0341d; }
+  .home .row2 { display: flex; gap: 12px; }
+  .home .row2 > div { flex: 1; }
+  .home .surprise {
+    margin-top: 10px;
+    width: 100%;
+    background: none; border: 0;
+    color: #1a2a52; text-decoration: underline;
+    font-size: 13px; cursor: pointer;
+    font-family: Georgia, serif; font-style: italic;
+  }
+  .home .foot {
+    margin-top: 26px;
+    font-family: Tahoma, sans-serif;
+    font-size: 11px;
+    color: #8a8271;
+    line-height: 1.6;
+  }
+  .home .sites { margin-top: 4px; }
+
+  /* ---------- status bar ---------- */
+  .statusbar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 3px 4px;
+    font-size: 11px;
+    color: #202020;
+  }
+  .cell {
+    border: 1px solid;
+    border-color: var(--bevel-mid) var(--bevel-light) var(--bevel-light) var(--bevel-mid);
+    padding: 2px 8px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    margin-right: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  #statusText { flex: 1; min-width: 0; text-overflow: ellipsis; }
+  #snapInfo { flex: 0 1 auto; max-width: 46%; text-overflow: ellipsis; }
+  .cell.crt-toggle { cursor: pointer; user-select: none; }
+  .cell.crt-toggle:hover { background: #d4d0c8; }
+
+  /* ---------- skin: IE6 / XP ---------- */
+  body[data-skin="xp"] .window {
+    --chrome-bg: #ece9d8;
+    border-radius: 8px 8px 0 0;
+    border: 0;
+    box-shadow: 0 30px 80px rgba(0,0,0,.55), 0 4px 18px rgba(0,0,0,.4);
+  }
+  body[data-skin="xp"] .titlebar {
+    border-radius: 7px 7px 0 0;
+    background: linear-gradient(180deg, #0997ff 0%, #0053ee 8%, #0050e0 40%, #06f 60%, #0053ee 90%, #0050e0 100%);
+    font-family: "Trebuchet MS", Tahoma, sans-serif;
+    font-size: 13px;
+    padding: 4px 6px 5px 8px;
+  }
+  body[data-skin="xp"] .tb-btn {
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,.6);
+    box-shadow: none;
+    background: linear-gradient(180deg, #3d9bff, #0a5fd7);
+    color: #fff;
+  }
+  body[data-skin="xp"] .tb-icon { border: 0; background: transparent; }
+  body[data-skin="xp"] .nav-btn:hover:not(:disabled) {
+    border-color: #b5bdd3; box-shadow: none; background: #f6f4ec;
+  }
+  body[data-skin="xp"] .inset-field {
+    border: 1px solid #7f9db9; box-shadow: none;
+  }
+  body[data-skin="xp"] .go-btn {
+    border: 1px solid #003c74;
+    box-shadow: inset 0 0 0 1px #fff;
+    border-radius: 3px;
+    background: linear-gradient(180deg, #fff, #ecebe5 86%, #d8d0c0);
+  }
+
+  /* ---------- skin: old chrome ---------- */
+  body[data-skin="chrome2010"] .window {
+    --chrome-bg: #dfe3e8;
+    border: 1px solid #9aa3ad;
+    border-radius: 6px 6px 0 0;
+    box-shadow: 0 30px 80px rgba(0,0,0,.55), 0 4px 18px rgba(0,0,0,.4);
+  }
+  body[data-skin="chrome2010"] .titlebar {
+    background: linear-gradient(180deg, #f2f4f6, #cfd5db);
+    color: #333;
+    text-shadow: none;
+    font-weight: 400;
+    font-size: 12px;
+  }
+  body[data-skin="chrome2010"] .tb-icon { border: 1px solid #9aa3ad; background: #fff; }
+  body[data-skin="chrome2010"] .tb-btn { border-radius: 3px; box-shadow: none; background: #eef1f4; border: 1px solid #9aa3ad; }
+  body[data-skin="chrome2010"] .nav-btn { border-radius: 3px; }
+  body[data-skin="chrome2010"] .nav-btn:hover:not(:disabled) { border-color: #b9bfc6; box-shadow: none; }
+  body[data-skin="chrome2010"] .inset-field { border: 1px solid #aeb4bb; box-shadow: inset 0 1px 2px rgba(0,0,0,.08); border-radius: 2px; }
+  body[data-skin="chrome2010"] .go-btn { border-radius: 2px; border: 1px solid #8f959c; box-shadow: none; background: linear-gradient(180deg,#f5f6f7,#dfe3e6); }
+
+  /* ---------- skin: modern ---------- */
+  body[data-skin="modern"] .window {
+    --chrome-bg: #202124;
+    --chrome-text: #e8eaed;
+    border: 0; border-radius: 10px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.6), 0 4px 18px rgba(0,0,0,.4);
+  }
+  body[data-skin="modern"] .titlebar { background: #202124; color: #9aa0a6; font-weight: 400; }
+  body[data-skin="modern"] .tb-icon { background: transparent; border: 0; color: #9aa0a6; }
+  body[data-skin="modern"] .tb-btn { background: transparent; border: 0; box-shadow: none; color: #9aa0a6; border-radius: 50%; }
+  body[data-skin="modern"] .tb-btn:hover { background: #3c4043; }
+  body[data-skin="modern"] .toolbar { border-bottom-color: #3c4043; }
+  body[data-skin="modern"] .nav-btn { color: #e8eaed; border-radius: 4px; }
+  body[data-skin="modern"] .nav-btn:hover:not(:disabled) { background: #3c4043; border: 1px solid transparent; box-shadow: none; }
+  body[data-skin="modern"] .addressrow { border-bottom-color: #3c4043; }
+  body[data-skin="modern"] .addressrow label { color: #9aa0a6; }
+  body[data-skin="modern"] .inset-field { background: #303134; border: 1px solid #3c4043; border-radius: 14px; color: #e8eaed; box-shadow: none; }
+  body[data-skin="modern"] .go-btn { background: #8ab4f8; color: #202124; border: 0; border-radius: 14px; box-shadow: none; }
+  body[data-skin="modern"] .statusbar { color: #9aa0a6; }
+  body[data-skin="modern"] .cell { border-color: #3c4043; }
+  body[data-skin="modern"] .capture-nav .hint { color: #9aa0a6; }
+  body[data-skin="modern"] .cell.crt-toggle:hover { background: #3c4043; }
+
+  /* ---------- small screens ---------- */
+  @media (max-width: 720px) {
+    body { padding: 10px 6px; }
+    .stage-head { display: none; }
+    .window { height: calc(100vh - 20px); min-height: 0; }
+    .home { padding: 22px 16px; }
+    .home .row2 { flex-direction: column; gap: 0; }
+  }
+</style>
+</head>
+<body data-skin="navigator">
+  <div class="stage-head">
+    <h1>Wayback Window</h1>
+    <p>the real web, exactly as archived - nothing recreated</p>
+  </div>
+
+  <div class="window" id="window">
+    <div class="titlebar">
+      <span class="tb-icon" id="tbIcon">&#9638;</span>
+      <span class="tb-title" id="tbTitle">Wayback Window - Home</span>
+      <button class="tb-btn" title="Minimize (decorative)">_</button>
+      <button class="tb-btn" title="Maximize" id="tbMax">&#9633;</button>
+      <button class="tb-btn" title="Home" id="tbClose">&#10005;</button>
+    </div>
+
+    <div class="toolbar">
+      <button class="nav-btn" id="backBtn" title="Back">&#9664; Back</button>
+      <button class="nav-btn" id="reloadBtn" title="Reload">&#8635; Reload</button>
+      <button class="nav-btn" id="homeBtn" title="Home">&#8962; Home</button>
+      <span class="sep"></span>
+      <button class="nav-btn" id="openOrigBtn" title="Open this capture at archive.org" disabled>&#8599; archive.org</button>
+      <span class="capture-nav">
+        <span class="hint" id="capHint">captures</span>
+        <button class="nav-btn" id="prevCap" title="Previous capture" disabled>&larr;</button>
+        <button class="nav-btn" id="nextCap" title="Next capture" disabled>&rarr;</button>
+      </span>
+    </div>
+
+    <div class="addressrow">
+      <label for="urlInput">Address</label>
+      <input class="inset-field" id="urlInput" type="text" spellcheck="false"
+             placeholder="google.com" autocomplete="off" autocapitalize="off">
+      <label for="dateInput">On day</label>
+      <input class="inset-field" id="dateInput" type="text" spellcheck="false"
+             placeholder="5 mar 2016" autocomplete="off">
+      <select class="inset-field" id="skinSelect" title="Browser skin">
+        <option value="auto" selected>skin: auto</option>
+        <option value="navigator">Netscape 90s</option>
+        <option value="xp">XP / IE6 era</option>
+        <option value="chrome2010">Chrome 2010</option>
+        <option value="modern">Modern</option>
+      </select>
+      <button class="go-btn" id="goBtn">Go</button>
+    </div>
+
+    <div class="viewport-wrap" id="viewportWrap">
+      <iframe id="frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+              title="Archived page"></iframe>
+      <div class="home" id="homePage">
+        <div class="home-inner">
+          <h2>Wayback <span class="b">Window</span></h2>
+          <p class="tagline">type an address and a day - see the page the way it actually was</p>
+          <div class="panel">
+            <label class="fld" for="homeUrl">Website</label>
+            <input class="big" id="homeUrl" type="text" placeholder="google.com" spellcheck="false" autocomplete="off" autocapitalize="off">
+            <div class="chips sites" id="siteChips"></div>
+            <label class="fld" for="homeDate">Day (any format - "14 feb 2009", "2005-11-03", "31/12/1999")</label>
+            <input class="big" id="homeDate" type="text" placeholder="14 feb 2009" spellcheck="false" autocomplete="off">
+            <div class="interpreted" id="interpreted">&nbsp;</div>
+            <div class="chips" id="yearChips"></div>
+            <button class="travel" id="travelBtn">Travel</button>
+            <button class="surprise" id="surpriseBtn">surprise me - pick a site and a year</button>
+          </div>
+          <p class="foot">
+            Every page shown is a genuine capture from the Internet Archive's Wayback Machine -
+            the largest public record of the old web. If no one archived that site on that day,
+            the nearest real capture is shown instead, and the status bar says so.
+            Some pages were never saved at all; those days are simply gone.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="statusbar">
+      <span class="cell" id="statusText">Ready</span>
+      <span class="cell" id="snapInfo">&nbsp;</span>
+      <span class="cell crt-toggle" id="crtToggle" title="Toggle CRT scanlines">CRT: off</span>
+    </div>
+  </div>
+
+<script>
+"use strict";
+
+/* ---------- dom ---------- */
+const $ = (id) => document.getElementById(id);
+const frame = $("frame"), homePage = $("homePage"), viewportWrap = $("viewportWrap");
+const urlInput = $("urlInput"), dateInput = $("dateInput");
+const homeUrl = $("homeUrl"), homeDate = $("homeDate");
+const statusText = $("statusText"), snapInfo = $("snapInfo"), tbTitle = $("tbTitle");
+
+/* ---------- classic site pool ---------- */
+const CLASSICS = [
+  "google.com", "yahoo.com", "msn.com", "altavista.com", "ask.com",
+  "bbc.co.uk", "cnn.com", "nytimes.com",
+  "apple.com", "microsoft.com", "adobe.com",
+  "amazon.com", "ebay.com", "craigslist.org",
+  "wikipedia.org", "imdb.com",
+  "myspace.com", "orkut.com", "facebook.com", "twitter.com", "youtube.com",
+  "reddit.com", "digg.com", "slashdot.org",
+  "rediff.com", "indiatimes.com", "sify.com",
+  "github.com", "stackoverflow.com",
+  "hotmail.com", "geocities.com", "angelfire.com",
+  "nasa.gov", "whitehouse.gov", "india.gov.in"
+];
+const ERA_YEARS = [1996, 1999, 2002, 2005, 2008, 2011, 2014, 2016, 2019, 2022];
+
+/* ---------- state ---------- */
+let current = null;          // { ts: "yyyymmddhhmmss", original: "http://..." }
+let captures = null;         // sorted array of ts strings for current url
+let capturesFor = null;      // url the captures list belongs to
+let skinOverride = "auto";
+let crtOn = false;
+
+/* ---------- small utils ---------- */
+function setStatus(msg) { statusText.textContent = msg; }
+function setSnapInfo(html) { snapInfo.innerHTML = html || "&nbsp;"; }
+function setTitle(t) { tbTitle.textContent = t; document.title = t + " - Wayback Window"; }
+
+function ts14(d) {
+  const p = (n) => String(n).padStart(2, "0");
+  return d.getUTCFullYear() + p(d.getUTCMonth() + 1) + p(d.getUTCDate()) +
+         p(d.getUTCHours()) + p(d.getUTCMinutes()) + p(d.getUTCSeconds());
+}
+function tsToDate(ts) {
+  return new Date(Date.UTC(+ts.slice(0,4), +ts.slice(4,6)-1, +ts.slice(6,8),
+                           +ts.slice(8,10), +ts.slice(10,12), +ts.slice(12,14)));
+}
+const MONTHS = ["January","February","March","April","May","June","July",
+                "August","September","October","November","December"];
+function fmtDate(d) {
+  return d.getUTCDate() + " " + MONTHS[d.getUTCMonth()] + " " + d.getUTCFullYear();
+}
+function fmtTs(ts) {
+  const d = tsToDate(ts);
+  const p = (n) => String(n).padStart(2, "0");
+  return fmtDate(d) + ", " + p(d.getUTCHours()) + ":" + p(d.getUTCMinutes()) + " UTC";
+}
+
+/* ---------- date parsing: any sane human format ---------- */
+function parseDateInput(raw) {
+  const s = raw.trim().toLowerCase().replace(/[,]/g, " ").replace(/\s+/g, " ");
+  if (!s) return null;
+  const mon = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12};
+  let m;
+  // ISO: 2016-03-05 or 2016/03/05
+  if ((m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/))) {
+    return build(+m[1], +m[2], +m[3]);
+  }
+  // numeric: 05/03/2016 -> read as DD/MM/YYYY
+  if ((m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/))) {
+    return build(+m[3], +m[2], +m[1]);
+  }
+  // 14 feb 2009 / 14th february 2009
+  if ((m = s.match(/^(\d{1,2})(?:st|nd|rd|th)? ([a-z]+)\.? (\d{4})$/)) && mon[m[2].slice(0,4).replace("sept","sep")] !== undefined) {
+    const mm = mon[m[2]] || mon[m[2].slice(0,3)];
+    if (mm) return build(+m[3], mm, +m[1]);
+  }
+  // feb 14 2009 / february 14th 2009
+  if ((m = s.match(/^([a-z]+)\.? (\d{1,2})(?:st|nd|rd|th)? (\d{4})$/))) {
+    const mm = mon[m[1]] || mon[m[1].slice(0,3)];
+    if (mm) return build(+m[3], mm, +m[2]);
+  }
+  // bare year
+  if ((m = s.match(/^(\d{4})$/))) return build(+m[1], 1, 1);
+  return null;
+
+  function build(y, mo, d) {
+    if (y < 1990 || y > new Date().getUTCFullYear()) return null;
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+    const dt = new Date(Date.UTC(y, mo - 1, d, 12, 0, 0));
+    if (dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return null;
+    return dt;
+  }
+}
+
+/* ---------- url ---------- */
+function normalizeUrl(raw) {
+  let u = raw.trim();
+  if (!u) return null;
+  u = u.replace(/^https?:\/\/(wayback|web)\.archive\.org\/web\/\d+[^/]*\//i, ""); // pasted wayback link
+  if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(u)) u = "http://" + u;
+  try { new URL(u); return u; } catch { return null; }
+}
+function hostOf(u) { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return u; } }
+
+/* ---------- archive lookups ---------- */
+async function apiAvailability(url, ts) {
+  const r = await fetch("https://archive.org/wayback/available?url=" +
+    encodeURIComponent(url) + "&timestamp=" + ts);
+  if (!r.ok) throw new Error("availability " + r.status);
+  const j = await r.json();
+  const c = j && j.archived_snapshots && j.archived_snapshots.closest;
+  if (c && c.available && c.url && c.timestamp) {
+    return { ts: c.timestamp, pageUrl: c.url.replace(/^http:\/\//, "https://") };
+  }
+  return null;
+}
+async function apiCdx(url, ts) {
+  const y = +ts.slice(0, 4);
+  const q = "https://web.archive.org/cdx/search/cdx?url=" + encodeURIComponent(url) +
+    "&output=json&filter=statuscode:200&collapse=timestamp:8&from=" + (y - 2) +
+    "&to=" + (y + 2) + "&limit=4000";
+  const r = await fetch(q);
+  if (!r.ok) throw new Error("cdx " + r.status);
+  const rows = await r.json();
+  if (!Array.isArray(rows) || rows.length < 2) return null;
+  let best = null;
+  for (let i = 1; i < rows.length; i++) {
+    const rts = rows[i][1];
+    if (!best || Math.abs(+rts - +ts) < Math.abs(+best - +ts)) best = rts;
+  }
+  return best ? { ts: best, pageUrl: "https://web.archive.org/web/" + best + "/" + url } : null;
+}
+async function findSnapshot(url, ts) {
+  try { const a = await apiAvailability(url, ts); if (a) return { ...a, via: "api" }; } catch {}
+  try { const b = await apiCdx(url, ts); if (b) return { ...b, via: "cdx" }; } catch {}
+  return null;
+}
+
+/* fetch full capture list for prev/next (lazy, background) */
+async function fetchCaptureList(url) {
+  if (capturesFor === url && captures) return;
+  captures = null; capturesFor = url;
+  try {
+    const q = "https://web.archive.org/cdx/search/cdx?url=" + encodeURIComponent(url) +
+      "&output=json&filter=statuscode:200&collapse=timestamp:8&limit=20000";
+    const r = await fetch(q);
+    if (!r.ok) throw new Error("cdx " + r.status);
+    const rows = await r.json();
+    if (Array.isArray(rows) && rows.length > 1) {
+      captures = rows.slice(1).map((row) => row[1]).sort();
+    }
+  } catch { captures = null; }
+  updateCaptureButtons();
+}
+function updateCaptureButtons() {
+  const prev = $("prevCap"), next = $("nextCap"), hint = $("capHint");
+  if (!current) {
+    prev.disabled = true; next.disabled = true; hint.textContent = "captures";
+    return;
+  }
+  if (!captures || capturesFor !== current.key) {
+    prev.disabled = true; next.disabled = true;
+    hint.textContent = "captures: index offline";
+    return;
+  }
+  let i = captures.indexOf(current.ts);
+  if (i >= 0) {
+    prev.disabled = i <= 0;
+    next.disabled = i >= captures.length - 1;
+  } else {
+    const a = captures.findIndex((t) => +t > +current.ts); // first capture after, or -1
+    prev.disabled = a === 0 || (a === -1 && captures.length === 0);
+    next.disabled = a === -1;
+  }
+  hint.textContent = captures.length + " captures";
+}
+
+/* ---------- rendering ---------- */
+function skinForYear(y) {
+  if (y <= 1999) return "navigator";
+  if (y <= 2007) return "xp";
+  if (y <= 2013) return "chrome2010";
+  return "modern";
+}
+function applySkin(yearGuess) {
+  const skin = skinOverride === "auto" ? skinForYear(yearGuess || 1999) : skinOverride;
+  document.body.dataset.skin = skin;
+}
+function waybackIdUrl(ts, pageUrl) {
+  return "https://web.archive.org/web/" + ts + "id_/" + pageUrl.replace(/^https?:\/\/web\.archive\.org\/web\/\d+(?:id_)?\//, "");
+}
+function loadCapture(ts, originalUrl, opts) {
+  opts = opts || {};
+  const key = hostOf(originalUrl);
+  current = { ts, original: originalUrl, key };
+  const src = waybackIdUrl(ts, originalUrl);
+  frame.style.display = "block";
+  homePage.style.display = "none";
+  frame.src = src;
+  setStatus("Opening " + hostOf(originalUrl) + " as archived…");
+  setTitle(hostOf(originalUrl) + " - " + fmtTs(ts));
+  const requested = opts.requestedTs && opts.requestedTs.slice(0, 8) !== ts.slice(0, 8)
+    ? " (nearest to " + fmtDate(tsToDate(opts.requestedTs)) + ")"
+    : "";
+  setSnapInfo("captured " + fmtTs(ts) + requested);
+  $("openOrigBtn").disabled = false;
+  $("urlInput").value = originalUrl.replace(/^https?:\/\//, "");
+  applySkin(+ts.slice(0, 4));
+  history.replaceState(null, "", "#u=" + encodeURIComponent(originalUrl) + "&ts=" + ts);
+  updateCaptureButtons();
+  fetchCaptureList(key);
+}
+frame.addEventListener("load", () => {
+  if (frame.style.display === "block" && frame.src) setStatus("Done");
+});
+
+/* approximate fallback: hand the guess to Wayback, it 302s to nearest */
+function loadApproximate(ts, originalUrl) {
+  current = { ts, original: originalUrl, key: hostOf(originalUrl) };
+  frame.style.display = "block";
+  homePage.style.display = "none";
+  frame.src = waybackIdUrl(ts, originalUrl);
+  setStatus("Archive index unreachable - asking Wayback directly…");
+  setTitle(hostOf(originalUrl) + " - near " + fmtDate(tsToDate(ts)));
+  setSnapInfo("showing Wayback's nearest capture to " + fmtDate(tsToDate(ts)));
+  $("openOrigBtn").disabled = false;
+  applySkin(+ts.slice(0, 4));
+  history.replaceState(null, "", "#u=" + encodeURIComponent(originalUrl) + "&ts=" + ts);
+}
+
+/* ---------- travel ---------- */
+let busy = false;
+async function travel(rawUrl, rawDate) {
+  if (busy) return;
+  const url = normalizeUrl(rawUrl);
+  if (!url) { setStatus("That address doesn't look right."); return; }
+  const date = parseDateInput(rawDate);
+  if (!date) { setStatus("Can't read that date - try '14 feb 2009' or '2009-02-14'."); return; }
+  busy = true;
+  $("goBtn").disabled = true;
+  const ts = ts14(date);
+  setStatus("Searching the archive for " + hostOf(url) + " near " + fmtDate(date) + "…");
+  try {
+    const hit = await findSnapshot(url, ts);
+    if (hit) {
+      loadCapture(hit.ts, hit.pageUrl.replace(/^https?:\/\/web\.archive\.org\/web\/\d+(?:id_)?\//, ""), { requestedTs: ts });
+    } else {
+      setStatus("No indexed capture found - trying Wayback directly…");
+      loadApproximate(ts, url);
+    }
+  } finally {
+    busy = false;
+    $("goBtn").disabled = false;
+  }
+}
+
+/* ---------- capture prev/next ---------- */
+function stepCapture(dir) {
+  if (!current || !captures || capturesFor !== current.key) return;
+  let i = captures.indexOf(current.ts);
+  if (i < 0) {
+    i = captures.findIndex((t) => +t > +current.ts);
+    if (i < 0) i = captures.length; // current is newer than every capture
+  }
+  const n = i + dir;
+  if (n < 0 || n >= captures.length) return;
+  loadCapture(captures[n], current.original, {});
+}
+
+/* ---------- home page helpers ---------- */
+function fillChips() {
+  const sc = $("siteChips");
+  CLASSICS.slice(0, 12).forEach((s) => {
+    const b = document.createElement("button");
+    b.className = "chip"; b.textContent = s;
+    b.onclick = () => { homeUrl.value = s; };
+    sc.appendChild(b);
+  });
+  const yc = $("yearChips");
+  ERA_YEARS.forEach((y) => {
+    const b = document.createElement("button");
+    b.className = "chip"; b.textContent = y;
+    b.onclick = () => { homeDate.value = "1 jan " + y; updateInterpreted(); };
+    yc.appendChild(b);
+  });
+}
+function updateInterpreted() {
+  const d = parseDateInput(homeDate.value || "");
+  $("interpreted").textContent = d ? "→ " + fmtDate(d) : " ";
+}
+homeDate.addEventListener("input", updateInterpreted);
+dateInput.addEventListener("input", () => {
+  const d = parseDateInput(dateInput.value || "");
+  dateInput.title = d ? fmtDate(d) : "";
+});
+
+/* ---------- events ---------- */
+$("goBtn").onclick = () => travel(urlInput.value, dateInput.value);
+$("travelBtn").onclick = () => {
+  urlInput.value = homeUrl.value; dateInput.value = homeDate.value;
+  travel(homeUrl.value, homeDate.value);
+};
+[urlInput, dateInput].forEach((el) => el.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") travel(urlInput.value, dateInput.value);
+}));
+[homeUrl, homeDate].forEach((el) => el.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") $("travelBtn").click();
+}));
+$("surpriseBtn").onclick = () => {
+  homeUrl.value = CLASSICS[Math.floor(Math.random() * CLASSICS.length)];
+  const y = ERA_YEARS[Math.floor(Math.random() * (ERA_YEARS.length - 1))];
+  homeDate.value = (1 + Math.floor(Math.random() * 28)) + " " +
+    MONTHS[Math.floor(Math.random() * 12)].slice(0, 3).toLowerCase() + " " + y;
+  updateInterpreted();
+};
+$("homeBtn").onclick = goHome;
+$("tbClose").onclick = goHome;
+$("backBtn").onclick = () => history.back();
+$("reloadBtn").onclick = () => { if (frame.src && frame.style.display === "block") { setStatus("Reloading…"); frame.src = frame.src; } };
+$("openOrigBtn").onclick = () => {
+  if (current) window.open("https://web.archive.org/web/" + current.ts + "/" + current.original, "_blank", "noopener");
+};
+$("prevCap").onclick = () => stepCapture(-1);
+$("nextCap").onclick = () => stepCapture(1);
+$("skinSelect").onchange = (e) => {
+  skinOverride = e.target.value;
+  applySkin(current ? +current.ts.slice(0, 4) : undefined);
+};
+$("crtToggle").onclick = () => {
+  crtOn = !crtOn;
+  viewportWrap.classList.toggle("crt", crtOn);
+  $("crtToggle").textContent = "CRT: " + (crtOn ? "on" : "off");
+};
+$("tbMax").onclick = () => {
+  const w = $("window");
+  if (document.fullscreenElement) document.exitFullscreen();
+  else if (w.requestFullscreen) w.requestFullscreen();
+};
+function goHome() {
+  frame.style.display = "none"; frame.src = "about:blank";
+  homePage.style.display = "block";
+  current = null;
+  setStatus("Ready"); setSnapInfo(""); setTitle("Wayback Window - Home");
+  $("openOrigBtn").disabled = true;
+  history.replaceState(null, "", location.pathname);
+  applySkin();
+}
+
+/* ---------- boot ---------- */
+fillChips();
+applySkin();
+(function boot() {
+  const h = location.hash;
+  const mU = h.match(/u=([^&]+)/), mT = h.match(/ts=(\d{14})/);
+  if (mU && mT) {
+    const u = decodeURIComponent(mU[1]);
+    loadCapture(mT[1], u, {});
+  }
+})();
+</script>
+</body>
+</html>
