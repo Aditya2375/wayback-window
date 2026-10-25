@@ -742,6 +742,8 @@ function loadCapture(ts, originalUrl, opts) {
   setSnapInfo("captured " + fmtTs(ts) + requested);
   $("openOrigBtn").disabled = false;
   $("urlInput").value = originalUrl.replace(/^https?:\/\//, "");
+  dateInput.value = fmtDate(tsToDate(ts));
+  dateInput.title = dateInput.value;
   applySkin(+ts.slice(0, 4));
   history.replaceState(null, "", "#u=" + encodeURIComponent(originalUrl) + "&ts=" + ts);
   updateCaptureButtons();
@@ -762,6 +764,8 @@ function loadApproximate(ts, originalUrl) {
   setTitle(hostOf(originalUrl) + " - near " + fmtDate(tsToDate(ts)));
   setSnapInfo("showing Wayback's nearest capture to " + fmtDate(tsToDate(ts)));
   $("openOrigBtn").disabled = false;
+  dateInput.value = fmtDate(tsToDate(ts));
+  dateInput.title = dateInput.value;
   applySkin(+ts.slice(0, 4));
   history.replaceState(null, "", "#u=" + encodeURIComponent(originalUrl) + "&ts=" + ts);
 }
