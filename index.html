@@ -556,8 +556,8 @@ const ERA_YEARS = [1996, 1999, 2002, 2005, 2008, 2011, 2014, 2016, 2019, 2022];
 
 /* ---------- state ---------- */
 let current = null;          // { ts: "yyyymmddhhmmss", original: "http://..." }
-let captures = null;         // sorted array of ts strings for current url
-let capturesFor = null;      // url the captures list belongs to
+let capEdge = { prev: false, next: false };  // learned "no capture this way" for the current host
+let capBusy = false;         // a prev/next jump is in flight
 let skinOverride = "auto";
 let crtOn = false;
 
@@ -585,6 +585,15 @@ function fmtTs(ts) {
   const p = (n) => String(n).padStart(2, "0");
   return fmtDate(d) + ", " + p(d.getUTCHours()) + ":" + p(d.getUTCMinutes()) + " UTC";
 }
+function dateToTs(d) {
+  const p = (n) => String(n).padStart(2, "0");
+  return "" + d.getUTCFullYear() + p(d.getUTCMonth() + 1) + p(d.getUTCDate()) +
+         p(d.getUTCHours()) + p(d.getUTCMinutes()) + p(d.getUTCSeconds());
+}
+function tsPlusDays(ts, days) {
+  const d = tsToDate(ts); d.setUTCDate(d.getUTCDate() + days); return dateToTs(d);
+}
+function nowTs() { return dateToTs(new Date()); }
 
 /* ---------- date parsing: any sane human format ---------- */
 function parseDateInput(raw) {
@@ -667,43 +676,39 @@ async function findSnapshot(url, ts) {
   return null;
 }
 
-/* fetch full capture list for prev/next (lazy, background) */
-async function fetchCaptureList(url) {
-  if (capturesFor === url && captures) return;
-  captures = null; capturesFor = url;
-  try {
-    const q = "https://web.archive.org/cdx/search/cdx?url=" + encodeURIComponent(url) +
-      "&output=json&filter=statuscode:200&collapse=timestamp:8&limit=20000";
-    const r = await fetch(q);
-    if (!r.ok) throw new Error("cdx " + r.status);
-    const rows = await r.json();
-    if (Array.isArray(rows) && rows.length > 1) {
-      captures = rows.slice(1).map((row) => row[1]).sort();
-    }
-  } catch { captures = null; }
-  updateCaptureButtons();
-}
+/* ---------- capture prev/next ----------
+   The CDX index endpoint no longer sends CORS headers, so a browser cannot
+   read the full capture list. Step through the availability API instead
+   (it allows cross-origin reads): probe widening jumps until the closest
+   snapshot lands strictly on the requested side of the current capture. */
 function updateCaptureButtons() {
   const prev = $("prevCap"), next = $("nextCap"), hint = $("capHint");
   if (!current) {
     prev.disabled = true; next.disabled = true; hint.textContent = "captures";
     return;
   }
-  if (!captures || capturesFor !== current.key) {
-    prev.disabled = true; next.disabled = true;
-    hint.textContent = "captures: index offline";
-    return;
-  }
-  let i = captures.indexOf(current.ts);
-  if (i >= 0) {
-    prev.disabled = i <= 0;
-    next.disabled = i >= captures.length - 1;
-  } else {
-    const a = captures.findIndex((t) => +t > +current.ts); // first capture after, or -1
-    prev.disabled = a === 0 || (a === -1 && captures.length === 0);
-    next.disabled = a === -1;
-  }
-  hint.textContent = captures.length + " captures";
+  prev.disabled = capBusy || capEdge.prev || +current.ts.slice(0, 4) <= 1996;
+  next.disabled = capBusy || capEdge.next || +current.ts >= +nowTs();
+  hint.textContent = capBusy ? "finding capture\u2026" : "nearby captures";
+}
+async function stepCapture(dir) {
+  if (!current || capBusy) return;
+  capBusy = true; updateCaptureButtons();
+  const jumps = [1, 7, 31, 92, 366, 1098, 3660]; // ~day, week, month, quarter, year, 3y, 10y
+  let found = null;
+  try {
+    for (const j of jumps) {
+      const probe = tsPlusDays(current.ts, dir * j);
+      let hit = null;
+      try { hit = await apiAvailability(current.key, probe); } catch { hit = null; }
+      if (hit && +hit.ts !== +current.ts && (dir > 0 ? +hit.ts > +current.ts : +hit.ts < +current.ts)) { found = hit.ts; break; }
+      if (dir > 0 && +probe >= +nowTs()) break;          // nothing newer than now exists
+      if (dir < 0 && +probe.slice(0, 4) <= 1996) break;  // before the archive began
+    }
+  } finally { capBusy = false; }
+  if (found) loadCapture(found, current.original, {});
+  else if (dir < 0) capEdge.prev = true; else capEdge.next = true;
+  updateCaptureButtons();
 }
 
 /* ---------- rendering ---------- */
@@ -723,6 +728,7 @@ function waybackIdUrl(ts, pageUrl) {
 function loadCapture(ts, originalUrl, opts) {
   opts = opts || {};
   const key = hostOf(originalUrl);
+  if (!current || current.key !== key) capEdge = { prev: false, next: false };
   current = { ts, original: originalUrl, key };
   const src = waybackIdUrl(ts, originalUrl);
   frame.style.display = "block";
@@ -739,7 +745,6 @@ function loadCapture(ts, originalUrl, opts) {
   applySkin(+ts.slice(0, 4));
   history.replaceState(null, "", "#u=" + encodeURIComponent(originalUrl) + "&ts=" + ts);
   updateCaptureButtons();
-  fetchCaptureList(key);
 }
 frame.addEventListener("load", () => {
   if (frame.style.display === "block" && frame.src) setStatus("Done");
@@ -747,7 +752,9 @@ frame.addEventListener("load", () => {
 
 /* approximate fallback: hand the guess to Wayback, it 302s to nearest */
 function loadApproximate(ts, originalUrl) {
-  current = { ts, original: originalUrl, key: hostOf(originalUrl) };
+  const key = hostOf(originalUrl);
+  if (!current || current.key !== key) capEdge = { prev: false, next: false };
+  current = { ts, original: originalUrl, key };
   frame.style.display = "block";
   homePage.style.display = "none";
   frame.src = waybackIdUrl(ts, originalUrl);
@@ -783,19 +790,6 @@ async function travel(rawUrl, rawDate) {
     busy = false;
     $("goBtn").disabled = false;
   }
-}
-
-/* ---------- capture prev/next ---------- */
-function stepCapture(dir) {
-  if (!current || !captures || capturesFor !== current.key) return;
-  let i = captures.indexOf(current.ts);
-  if (i < 0) {
-    i = captures.findIndex((t) => +t > +current.ts);
-    if (i < 0) i = captures.length; // current is newer than every capture
-  }
-  const n = i + dir;
-  if (n < 0 || n >= captures.length) return;
-  loadCapture(captures[n], current.original, {});
 }
 
 /* ---------- home page helpers ---------- */
@@ -875,6 +869,7 @@ function goHome() {
   $("openOrigBtn").disabled = true;
   history.replaceState(null, "", location.pathname);
   applySkin();
+  updateCaptureButtons();
 }
 
 /* ---------- boot ---------- */
