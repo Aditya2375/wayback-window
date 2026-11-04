@@ -1,0 +1,2 @@
+# Wayback Window
+Static archive viewer. Captures may be incomplete. Uses Internet Archive metadata; unverified fallback dates are labeled.
